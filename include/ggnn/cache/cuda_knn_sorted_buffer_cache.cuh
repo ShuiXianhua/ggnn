@@ -13,8 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 // Authors: Fabian Groh, Lukas Ruppert, Patrick Wieschollek, Hendrik P.A. Lensch
-#ifndef CUDA_KNN_SORTED_BUFFER_CACHE_CUH_
-#define CUDA_KNN_SORTED_BUFFER_CACHE_CUH_
+
+#ifndef INCLUDE_GGNN_CACHE_CUDA_KNN_SORTED_BUFFER_CACHE_CUH_
+#define INCLUDE_GGNN_CACHE_CUDA_KNN_SORTED_BUFFER_CACHE_CUH_
 
 #include <cuda.h>
 #include <cuda_runtime.h>
@@ -220,7 +221,7 @@ struct SortedBufferCache {
    * ValueT dist = cache.distance(other_id)
    *
    * Return:
-   * 	ValueT distance
+   *   ValueT distance
    *
    * Note: distance valid in all threads.
    */
@@ -555,4 +556,4 @@ struct SortedBufferCache {
   }
 };
 
-#endif  // CUDA_KNN_SORTED_BUFFER_CACHE_CUH_
+#endif  // INCLUDE_GGNN_CACHE_CUDA_KNN_SORTED_BUFFER_CACHE_CUH_

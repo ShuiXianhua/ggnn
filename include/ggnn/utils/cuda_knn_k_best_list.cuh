@@ -13,8 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 // Authors: Fabian Groh, Patrick Wieschollek, Hendrik P.A. Lensch
-#ifndef CUDA_KNN_K_BEST_LIST_CUH_
-#define CUDA_KNN_K_BEST_LIST_CUH_
+
+#ifndef INCLUDE_GGNN_UTILS_CUDA_KNN_K_BEST_LIST_CUH_
+#define INCLUDE_GGNN_UTILS_CUDA_KNN_K_BEST_LIST_CUH_
 
 #include <cuda.h>
 #include <cuda_runtime.h>
@@ -191,4 +192,4 @@ struct KBestList {
   }
 };
 
-#endif  // CUDA_KNN_K_BEST_LIST_CUH_
+#endif  // INCLUDE_GGNN_UTILS_CUDA_KNN_K_BEST_LIST_CUH_

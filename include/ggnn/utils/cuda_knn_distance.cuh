@@ -13,8 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 // Authors: Fabian Groh, Patrick Wieschollek, Hendrik P.A. Lensch
-#ifndef CUDA_KNN_DISTANCE_CUH_
-#define CUDA_KNN_DISTANCE_CUH_
+#ifndef INCLUDE_GGNN_UTILS_CUDA_KNN_DISTANCE_CUH_
+#define INCLUDE_GGNN_UTILS_CUDA_KNN_DISTANCE_CUH_
 
 #include <cuda.h>
 #include <cuda_runtime.h>
@@ -102,7 +102,7 @@ struct Distance {
    * ValueT dist = distCalc.distance(other_id)
    *
    * Return:
-   * 	ValueT distance
+   *   ValueT distance
    *
    * Note: distance only valid in first thread.
    */
@@ -127,7 +127,7 @@ struct Distance {
    * ValueT dist = distCalc.distance(q_id,p_id)
    *
    * Return:
-   * 	ValueT distance
+   *   ValueT distance
    *
    * Note: distance only valid in first thread.
    */
@@ -152,7 +152,7 @@ struct Distance {
    * ValueT dist = distCalc.distance(other_id)
    *
    * Return:
-   * 	ValueT distance
+   *   ValueT distance
    *
    * Note: distance valid in all threads.
    */
@@ -201,4 +201,4 @@ struct Distance {
   }
 };
 
-#endif  // CUDA_KNN_DISTANCE_CUH_
+#endif  // INCLUDE_GGNN_UTILS_CUDA_KNN_DISTANCE_CUH_

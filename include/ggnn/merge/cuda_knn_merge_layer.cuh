@@ -14,8 +14,8 @@ limitations under the License.
 ==============================================================================*/
 // Authors: Fabian Groh, Lukas Ruppert, Patrick Wieschollek, Hendrik P.A. Lensch
 
-#ifndef CUDA_KNN_MERGE_LAYER_CUH_
-#define CUDA_KNN_MERGE_LAYER_CUH_
+#ifndef INCLUDE_GGNN_MERGE_CUDA_KNN_MERGE_LAYER_CUH_
+#define INCLUDE_GGNN_MERGE_CUDA_KNN_MERGE_LAYER_CUH_
 
 #include <cuda.h>
 #include <cuda_runtime.h>
@@ -78,14 +78,14 @@ struct MergeKernel {
       s_seg_btm = n / S;
     }
 
-    return ((int)(s_seg_btm / pow(c_G, layer_top - layer_btm))) * S;
+    return (static_cast<int>(s_seg_btm / pow(c_G, layer_top - layer_btm))) * S;
   }
 
   __device__ __forceinline__ void operator()() const {
     const float xi =
         (d_nn1_stats[0] * d_nn1_stats[0]) * c_tau_build * c_tau_build;
 
-    const KeyT n = N_offset + (int)blockIdx.x;
+    const KeyT n = N_offset + static_cast<int>(blockIdx.x);
 
     const KeyT m =
         (!layer_btm) ? n : d_translation[c_STs_offsets[layer_btm] + n];
@@ -165,4 +165,4 @@ struct MergeKernel {
   int layer_top;  // layer to start
 };
 
-#endif  // CUDA_KNN_MERGE_LAYER_CUH_
+#endif  // INCLUDE_GGNN_MERGE_CUDA_KNN_MERGE_LAYER_CUH_

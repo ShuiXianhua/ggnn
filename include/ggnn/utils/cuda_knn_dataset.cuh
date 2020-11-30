@@ -12,14 +12,16 @@ limitations under the License.
 // Authors: Fabian Groh, Lukas Rupert, Patrick Wieschollek, Hendrik P.A. Lensch
 //
 
-#ifndef DATASET_CUH
-#define DATASET_CUH
+#ifndef INCLUDE_GGNN_UTILS_CUDA_KNN_DATASET_CUH_
+#define INCLUDE_GGNN_UTILS_CUDA_KNN_DATASET_CUH_
+
+#include <algorithm>
+#include <limits>
+#include <string>
 
 #include <cuda.h>
 #include <cuda_runtime.h>
 #include <stdio.h>
-
-#include <limits>
 
 #include "ggnn/config.hpp"
 #include "io/loader_ann.hpp"
@@ -93,52 +95,26 @@ struct Dataset {
                 KeyT num = std::numeric_limits<KeyT>::max()) {
     freeBase();
     XVecsLoader<BaseT> base_loader(base_file);
-    lprintf(1,
-            "Dataset::loadBase(): opened file containing %d %d-dimensional "
-            "vectors.\n",
-            base_loader.Num(), base_loader.Dim());
+
     num = std::min(num, base_loader.Num() - from);
-    if (num <= 0) {
-      fprintf(stderr,
-              "Dataset::loadBase(): the requested range contains no vectors. "
-              "aborting.\n");
-      freeBase();
-      return false;
-    }
+    CHECK_GT(num, 0) << "The requested range contains no vectors.";
+
     N_base = num;
-    if (D == 0)
+    if (D == 0) {
       D = base_loader.Dim();
-    else if (D != base_loader.Dim()) {
-      fprintf(stderr,
-              "Dataset::loadBase(): dimension mismatch (expected %d, got %d). "
-              "aborting.\n",
-              D, base_loader.Dim());
-      freeBase();
-      return false;
     }
+    CHECK_EQ(D, base_loader.Dim()) << "Dimension mismatch";
 
-    if (static_cast<size_t>(N_base) * static_cast<size_t>(D) >
-        static_cast<size_t>(std::numeric_limits<BAddrT>::max())) {
-      fprintf(stderr,
-              "Dataset::loadBase(): address type is insufficient to address "
-              "the requested dataset. aborting.\n");
-      freeBase();
-      return false;
-    }
+    const size_t dataset_max_index =
+        static_cast<size_t>(N_base) * static_cast<size_t>(D);
+    CHECK_LT(dataset_max_index, std::numeric_limits<BAddrT>::max())
+        << "Address type is insufficient to address "
+           "the requested dataset. aborting";
 
-    cudaError_t result = cudaMallocManaged(
-        &m_base, static_cast<BAddrT>(N_base) * D * sizeof(BaseT));
-    if (result != cudaSuccess) {
-      fprintf(stderr,
-              "Dataset::loadBase(): failed to allocate memory. aborting.\n");
-      freeBase();
-      return false;
-    }
+    CHECK_CUDA(cudaMallocManaged(
+        &m_base, static_cast<BAddrT>(N_base) * D * sizeof(BaseT)));
 
-    lprintf(2, "Dataset::loadBase(): loading %d base vectors starting at %d.\n",
-            num, from);
     base_loader.load(m_base, from, num);
-    lprintf(3, "Dataset::loadBase(): done.\n");
     return true;
   }
 
@@ -147,62 +123,30 @@ struct Dataset {
                  KeyT num = std::numeric_limits<KeyT>::max()) {
     freeQuery();
     XVecsLoader<BaseT> query_loader(query_file);
-    lprintf(1,
-            "Dataset::loadQuery(): opened file containing %d %d-dimensional "
-            "vectors.\n",
-            query_loader.Num(), query_loader.Dim());
+
     num = std::min(num, query_loader.Num() - from);
-    if (num <= 0) {
-      fprintf(stderr,
-              "Dataset::loadQuery(): the requested range contains no vectors. "
-              "aborting.\n");
-      freeQuery();
-      return false;
-    }
-    if (N_query == 0)
+    CHECK_GT(num, 0) << "The requested range contains no vectors.";
+
+    if (N_query == 0) {
       N_query = num;
-    else if (N_query != num) {
-      fprintf(stderr,
-              "Dataset::loadQuery(): size mismatch (expected %d, got %d). "
-              "aborting.\n",
-              N_query, num);
-      freeQuery();
-      return false;
     }
-    if (D == 0)
+    CHECK_EQ(N_query, num) << "Number mismatch";
+
+    if (D == 0) {
       D = query_loader.Dim();
-    else if (D != query_loader.Dim()) {
-      fprintf(stderr,
-              "Dataset::loadQuery(): dimension mismatch (expected %d, got %d). "
-              "aborting.\n",
-              D, query_loader.Dim());
-      freeQuery();
-      return false;
     }
+    CHECK_EQ(D, query_loader.Dim()) << "Dimension mismatch";
 
-    if (static_cast<size_t>(N_query) * static_cast<size_t>(D) >
-        static_cast<size_t>(std::numeric_limits<BAddrT>::max())) {
-      fprintf(stderr,
-              "Dataset::loadQuery(): address type is insufficient to address "
-              "the requested dataset. aborting.\n");
-      freeQuery();
-      return false;
-    }
+    const size_t dataset_max_index =
+        static_cast<size_t>(N_query) * static_cast<size_t>(D);
+    CHECK_LT(dataset_max_index, std::numeric_limits<BAddrT>::max())
+        << "Address type is insufficient to address "
+           "the requested dataset. aborting";
 
-    cudaError_t result = cudaMallocManaged(
-        &m_query, static_cast<BAddrT>(N_query) * D * sizeof(BaseT));
-    if (result != cudaSuccess) {
-      fprintf(stderr,
-              "Dataset::loadQuery(): failed to allocate memory. aborting.\n");
-      freeQuery();
-      return false;
-    }
+    CHECK_CUDA(cudaMallocManaged(
+        &m_query, static_cast<BAddrT>(N_query) * D * sizeof(BaseT)));
 
-    lprintf(2,
-            "Dataset::loadQuery(): loading %d query vectors starting at %d.\n",
-            num, from);
     query_loader.load(m_query, from, num);
-    lprintf(3, "Dataset::loadQuery(): done.\n");
     return true;
   }
 
@@ -211,60 +155,33 @@ struct Dataset {
               KeyT num = std::numeric_limits<KeyT>::max()) {
     freeGT();
     XVecsLoader<KeyT> gt_loader(gt_file);
-    lprintf(1,
-            "Dataset::loadGT(): opened file containing %d %d-dimensional "
-            "vectors.\n",
-            gt_loader.Num(), gt_loader.Dim());
+
     num = std::min(num, gt_loader.Num() - from);
-    if (num <= 0) {
-      fprintf(stderr,
-              "Dataset::loadGT(): the requested range contains no vectors. "
-              "aborting.\n");
-      freeGT();
-      return false;
-    }
-    if (N_query == 0)
+    CHECK_GT(num, 0) << "The requested range contains no vectors.";
+
+    if (N_query == 0) {
       N_query = num;
-    else if (N_query != num) {
-      fprintf(
-          stderr,
-          "Dataset::loadGT(): size mismatch (expected %d, got %d). aborting.\n",
-          N_query, num);
-      freeGT();
-      return false;
     }
+    CHECK_EQ(N_query, num) << "Number mismatch";
+
     K_gt = gt_loader.Dim();
 
-    if (static_cast<size_t>(N_query) * static_cast<size_t>(K_gt) >
-        static_cast<size_t>(std::numeric_limits<BAddrT>::max())) {
-      fprintf(stderr,
-              "Dataset::loadGT(): address type is insufficient to address the "
-              "requested dataset. aborting.\n");
-      freeGT();
-      return false;
-    }
+    const size_t dataset_max_index =
+        static_cast<size_t>(N_query) * static_cast<size_t>(K_gt);
+    CHECK_LT(dataset_max_index, std::numeric_limits<BAddrT>::max())
+        << "Address type is insufficient to address "
+           "the requested dataset. aborting";
 
-    cudaError_t result = cudaMallocManaged(
-        &m_gt, static_cast<BAddrT>(N_query) * K_gt * sizeof(KeyT));
-    if (result != cudaSuccess) {
-      fprintf(stderr,
-              "Dataset::loadGT(): failed to allocate memory. aborting.\n");
-      freeGT();
-      return false;
-    }
+    CHECK_CUDA(cudaMallocManaged(
+        &m_gt, static_cast<BAddrT>(N_query) * K_gt * sizeof(KeyT)));
 
-    lprintf(
-        2,
-        "Dataset::loadGT(): loading %d ground truth vectors starting at %d.\n",
-        num, from);
     gt_loader.load(m_gt, from, num);
-    lprintf(3, "Dataset::loadGT(): done.\n");
     return true;
   }
 
   // TODO(fabi): remove?
   void prefetch(int gpuId) const {
-    lprintf(1, "Dataset::prefetch() to GPU %d.\n", gpuId);
+    DLOG(INFO) << "ataset::prefetch() to GPU " << gpuId;
 
     // push graph data to the gpu
     cudaMemAdvise(m_base, static_cast<BAddrT>(N_base) * D * sizeof(BaseT),
@@ -282,10 +199,10 @@ struct Dataset {
     cudaMemPrefetchAsync(
         m_query, static_cast<BAddrT>(N_query) * D * sizeof(BaseT), gpuId);
 
-    gpuErrchk(cudaPeekAtLastError());
-    gpuErrchk(cudaDeviceSynchronize());
-    gpuErrchk(cudaPeekAtLastError());
+    CHECK_CUDA(cudaPeekAtLastError());
+    CHECK_CUDA(cudaDeviceSynchronize());
+    CHECK_CUDA(cudaPeekAtLastError());
   }
 };
 
-#endif  // DATASET_CUH
+#endif  // INCLUDE_GGNN_UTILS_CUDA_KNN_DATASET_CUH_

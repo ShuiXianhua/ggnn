@@ -10,18 +10,18 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 // Authors: Fabian Groh, Lukas Rupert, Patrick Wieschollek, Hendrik P.A. Lensch
-//
 
-#ifndef GGNN_GRAPH_OPERATIONS_CUH
-#define GGNN_GRAPH_OPERATIONS_CUH
+#ifndef INCLUDE_GGNN_CUDA_KNN_GGNN_CUH_
+#define INCLUDE_GGNN_CUDA_KNN_GGNN_CUH_
+
+#include <limits>
+#include <string>
 
 #include <cuda.h>
 #include <cuda_runtime.h>
 #include <curand.h>
 #include <curand_kernel.h>
 #include <stdio.h>
-
-#include <limits>
 
 #include "cub/cub.cuh"
 #include "ggnn/cuda_knn_config.cuh"
@@ -132,11 +132,12 @@ struct GGNN {
       }
     }
 
-    printf("c@1: %f \n", c1 / (float)m_dataset.N_query);
-    printf("c@%d: %f \n", KQuery,
-           cKQuery / (float)(m_dataset.N_query * KQuery));
-    lprintf(2, "calculated dists: %f (%zu) \n",
-            calculated / (float)m_dataset.N_query, calculated);
+    const float number_of_points = static_cast<float>(m_dataset.N_query);
+
+    LOG(INFO) << "c@1: " << c1 / number_of_points;
+    LOG(INFO) << "c@" << KQuery << ": "
+              << cKQuery / (number_of_points * KQuery);
+    DLOG(INFO) << "mean calculated dists: " << calculated / number_of_points;
   }
 
   void queryLayer() const {
@@ -168,25 +169,25 @@ struct GGNN {
     query_kernel.d_dist_stats = m_dist_statistics;
     query_kernel.d_nn1_buffer = m_ggnn_graph.m_nn1_dist_buffer;
 
-    gpuErrchk(cudaPeekAtLastError());
-    gpuErrchk(cudaDeviceSynchronize());
-    gpuErrchk(cudaPeekAtLastError());
+    CHECK_CUDA(cudaPeekAtLastError());
+    CHECK_CUDA(cudaDeviceSynchronize());
+    CHECK_CUDA(cudaPeekAtLastError());
 
-    time_launcher(0, query_kernel, query_kernel.N);
+    time_launcher(0, &query_kernel, query_kernel.N);
 
-    gpuErrchk(cudaPeekAtLastError());
-    gpuErrchk(cudaDeviceSynchronize());
-    gpuErrchk(cudaPeekAtLastError());
+    CHECK_CUDA(cudaPeekAtLastError());
+    CHECK_CUDA(cudaDeviceSynchronize());
+    CHECK_CUDA(cudaPeekAtLastError());
 
     evaluateQueryResults(m_query_results, m_dist_statistics);
 
     cudaFree(m_query_results);
     cudaFree(m_dist_statistics);
 
-    gpuErrchk(cudaPeekAtLastError());
-    gpuErrchk(cudaDeviceSynchronize());
-    gpuErrchk(cudaPeekAtLastError());
-  };
+    CHECK_CUDA(cudaPeekAtLastError());
+    CHECK_CUDA(cudaDeviceSynchronize());
+    CHECK_CUDA(cudaPeekAtLastError());
+  }
 
   void queryLayerFast() const {
     typedef QueryKernel<ValueT, KeyT, D, KBuild, KF, KQuery, S, 64, BaseT,
@@ -217,25 +218,25 @@ struct GGNN {
     query_kernel.d_dist_stats = m_dist_statistics;
     query_kernel.d_nn1_buffer = m_ggnn_graph.m_nn1_dist_buffer;
 
-    gpuErrchk(cudaPeekAtLastError());
-    gpuErrchk(cudaDeviceSynchronize());
-    gpuErrchk(cudaPeekAtLastError());
+    CHECK_CUDA(cudaPeekAtLastError());
+    CHECK_CUDA(cudaDeviceSynchronize());
+    CHECK_CUDA(cudaPeekAtLastError());
 
-    time_launcher(0, query_kernel, query_kernel.N);
+    time_launcher(0, &query_kernel, query_kernel.N);
 
-    gpuErrchk(cudaPeekAtLastError());
-    gpuErrchk(cudaDeviceSynchronize());
-    gpuErrchk(cudaPeekAtLastError());
+    CHECK_CUDA(cudaPeekAtLastError());
+    CHECK_CUDA(cudaDeviceSynchronize());
+    CHECK_CUDA(cudaPeekAtLastError());
 
     evaluateQueryResults(m_query_results, m_dist_statistics);
 
     cudaFree(m_query_results);
     cudaFree(m_dist_statistics);
 
-    gpuErrchk(cudaPeekAtLastError());
-    gpuErrchk(cudaDeviceSynchronize());
-    gpuErrchk(cudaPeekAtLastError());
-  };
+    CHECK_CUDA(cudaPeekAtLastError());
+    CHECK_CUDA(cudaDeviceSynchronize());
+    CHECK_CUDA(cudaPeekAtLastError());
+  }
 
   void prefetch(const int gpuId) {
     m_dataset.prefetch(gpuId);
@@ -277,14 +278,14 @@ struct GGNN {
     /* Generate n floats on device */
     curandGenerateUniform(gen, d_rng, m_ggnn_graph.getNs(layer));
 
-    time_launcher(2, select_kernel, m_ggnn_graph.getNs(layer));
+    time_launcher(2, &select_kernel, m_ggnn_graph.getNs(layer));
 
     cudaFree(d_rng);
 
-    gpuErrchk(cudaPeekAtLastError());
-    gpuErrchk(cudaDeviceSynchronize());
-    gpuErrchk(cudaPeekAtLastError());
-  };
+    CHECK_CUDA(cudaPeekAtLastError());
+    CHECK_CUDA(cudaDeviceSynchronize());
+    CHECK_CUDA(cudaPeekAtLastError());
+  }
 
   void top(const int layer) {
     typedef TopMergeKernel<ValueT, KeyT, D, KBuild, 128, BaseT, BAddrT, GAddrT>
@@ -306,10 +307,10 @@ struct GGNN {
 
     time_launcher(2, &top_kernel, m_ggnn_graph.getNs(layer));
 
-    gpuErrchk(cudaPeekAtLastError());
-    gpuErrchk(cudaDeviceSynchronize());
-    gpuErrchk(cudaPeekAtLastError());
-  };
+    CHECK_CUDA(cudaPeekAtLastError());
+    CHECK_CUDA(cudaDeviceSynchronize());
+    CHECK_CUDA(cudaPeekAtLastError());
+  }
 
   void mergeLayer(const int layer_top, const int layer_btm) {
     typedef MergeKernel<ValueT, KeyT, D, KBuild, KF, S, 64, BaseT, BAddrT,
@@ -342,20 +343,20 @@ struct GGNN {
     merge_kernel.layer_top = layer_top;
     merge_kernel.layer_btm = layer_btm;
 
-    time_launcher(2, merge_kernel, m_ggnn_graph.getNs(layer_btm));
+    time_launcher(2, &merge_kernel, m_ggnn_graph.getNs(layer_btm));
 
-    gpuErrchk(cudaPeekAtLastError());
-    gpuErrchk(cudaDeviceSynchronize());
-    gpuErrchk(cudaPeekAtLastError());
+    CHECK_CUDA(cudaPeekAtLastError());
+    CHECK_CUDA(cudaDeviceSynchronize());
+    CHECK_CUDA(cudaPeekAtLastError());
 
     cudaMemcpy((void*)m_ggnn_graph.getGraph(layer_btm), (void*)d_graph_buffer,
                graph_buffer_size, cudaMemcpyDeviceToDevice);
 
     cudaFree(d_graph_buffer);
 
-    gpuErrchk(cudaPeekAtLastError());
-    gpuErrchk(cudaDeviceSynchronize());
-    gpuErrchk(cudaPeekAtLastError());
+    CHECK_CUDA(cudaPeekAtLastError());
+    CHECK_CUDA(cudaDeviceSynchronize());
+    CHECK_CUDA(cudaPeekAtLastError());
   };
 
   void merge(const int layer_top, const int layer_btm) {
@@ -405,15 +406,15 @@ struct GGNN {
 
     sym_kernel.N_offset = 0;
 
-    gpuErrchk(cudaPeekAtLastError());
-    gpuErrchk(cudaDeviceSynchronize());
-    gpuErrchk(cudaPeekAtLastError());
+    CHECK_CUDA(cudaPeekAtLastError());
+    CHECK_CUDA(cudaDeviceSynchronize());
+    CHECK_CUDA(cudaPeekAtLastError());
 
-    time_launcher(2, sym_kernel, m_ggnn_graph.getNs(layer));
+    time_launcher(2, &sym_kernel, m_ggnn_graph.getNs(layer));
 
-    gpuErrchk(cudaPeekAtLastError());
-    gpuErrchk(cudaDeviceSynchronize());
-    gpuErrchk(cudaPeekAtLastError());
+    CHECK_CUDA(cudaPeekAtLastError());
+    CHECK_CUDA(cudaDeviceSynchronize());
+    CHECK_CUDA(cudaPeekAtLastError());
 
     typedef SymBufferMergeKernel<ValueT, KeyT, KBuild, KF, 128, GAddrT>
         SymBufferMergeKernel;
@@ -426,11 +427,11 @@ struct GGNN {
     sym_buffer_merge_kernel.N = m_ggnn_graph.getNs(layer);
     sym_buffer_merge_kernel.N_offset = 0;
 
-    time_launcher(3, sym_buffer_merge_kernel, m_ggnn_graph.getNs(layer));
+    time_launcher(3, &sym_buffer_merge_kernel, m_ggnn_graph.getNs(layer));
 
-    gpuErrchk(cudaPeekAtLastError());
-    gpuErrchk(cudaDeviceSynchronize());
-    gpuErrchk(cudaPeekAtLastError());
+    CHECK_CUDA(cudaPeekAtLastError());
+    CHECK_CUDA(cudaDeviceSynchronize());
+    CHECK_CUDA(cudaPeekAtLastError());
 
     int c = 0;
     int m = 0;
@@ -453,9 +454,9 @@ struct GGNN {
     cudaFree(m_sym_atomic);
     cudaFree(m_statistics);
 
-    gpuErrchk(cudaPeekAtLastError());
-    gpuErrchk(cudaDeviceSynchronize());
-    gpuErrchk(cudaPeekAtLastError());
+    CHECK_CUDA(cudaPeekAtLastError());
+    CHECK_CUDA(cudaDeviceSynchronize());
+    CHECK_CUDA(cudaPeekAtLastError());
   };
 
   void build_bubble_merge() {
@@ -492,4 +493,4 @@ struct GGNN {
   }
 };
 
-#endif  // GGNN_GRAPH_OPERATIONS_CUH
+#endif  // INCLUDE_GGNN_CUDA_KNN_GGNN_CUH_

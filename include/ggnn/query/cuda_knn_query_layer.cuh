@@ -14,14 +14,15 @@ limitations under the License.
 ==============================================================================*/
 // Authors: Fabian Groh, Lukas Ruppert, Patrick Wieschollek, Hendrik P.A. Lensch
 
-#ifndef CUDA_KNN_QUERY_LAYER_CUH_
-#define CUDA_KNN_QUERY_LAYER_CUH_
+#ifndef INCLUDE_GGNN_QUERY_CUDA_KNN_QUERY_LAYER_CUH_
+#define INCLUDE_GGNN_QUERY_CUDA_KNN_QUERY_LAYER_CUH_
+
+#include <algorithm>
+#include <limits>
 
 #include <cuda.h>
 #include <cuda_runtime.h>
-
 #include <cub/cub.cuh>
-#include <limits>
 
 #include "ggnn/cache/cuda_knn_multi_worked_dists_cache.cuh"
 #include "ggnn/cache/cuda_knn_sorted_buffer_cache.cuh"
@@ -49,12 +50,9 @@ struct QueryKernel {
       Cache;
 
   void launch() {
-    lprintf(0,
-            "QueryKernel: KQuery %d, "
-            "MAX_ITERATIONS "
-            "%d, "
-            "CACHE_SIZE %d\n",
-            KQuery, MAX_ITERATIONS, CACHE_SIZE);
+    DLOG(INFO) << "QueryKernel -- KQuery: " << KQuery
+               << " MAX_ITERATIONS: " << MAX_ITERATIONS
+               << " CACHE_SIZE: " << CACHE_SIZE;
     launcher<<<N, BLOCK_DIM_X>>>((*this));
   }
 
@@ -62,7 +60,7 @@ struct QueryKernel {
     const float xi =
         (d_nn1_stats[1] * d_nn1_stats[1]) * c_tau_query * c_tau_query;
 
-    const KeyT n = N_offset + (int)blockIdx.x;
+    const KeyT n = N_offset + static_cast<int>(blockIdx.x);
 
     Cache cache(d_base, d_query, n, xi);
 
@@ -103,7 +101,6 @@ struct QueryKernel {
 
         __syncthreads();
         cache.fetch(s_knn, nullptr, K);
-
       }  // end iterations
     }
 
@@ -142,4 +139,4 @@ struct QueryKernel {
   int N_offset;  // gpu offset in N
 };
 
-#endif  // CUDA_KNN_QUERY_LAYER_CUH_
+#endif  // INCLUDE_GGNN_QUERY_CUDA_KNN_QUERY_LAYER_CUH_

@@ -13,8 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 // Authors: Fabian Groh, Patrick Wieschollek, Hendrik P.A. Lensch
-#ifndef CUDA_KNN_CORE_UTILS_CUH_
-#define CUDA_KNN_CORE_UTILS_CUH_
+
+#ifndef INCLUDE_GGNN_UTILS_CUDA_KNN_CORE_UTILS_CUH_
+#define INCLUDE_GGNN_UTILS_CUDA_KNN_CORE_UTILS_CUH_
 
 #include <cuda.h>
 #include <cuda_runtime.h>
@@ -28,7 +29,7 @@ __global__ void launcher(const T kernel) {
   kernel();
 }
 
-#define gpuErrchk(ans) \
+#define CHECK_CUDA(ans) \
   { gpuAssert((ans), __FILE__, __LINE__); }
 inline void gpuAssert(cudaError_t code, const char* file, int line,
                       bool abort = true) {
@@ -69,33 +70,8 @@ float time_launcher(const int log_level, T* kernel, int N) {
   kernel->launch();
   cudaEventRecord(stop);
 
-  gpuErrchk(cudaPeekAtLastError());
-  gpuErrchk(cudaDeviceSynchronize());
-
-  cudaEventSynchronize(stop);
-  float milliseconds = 0;
-  cudaEventElapsedTime(&milliseconds, start, stop);
-
-  lprintf(log_level, "ms: %f for %d queries -> %f ms/query \n", milliseconds, N,
-          milliseconds / N);
-  cudaEventDestroy(start);
-  cudaEventDestroy(stop);
-
-  return milliseconds;
-}
-
-template <typename T>
-float time_launcher(const int log_level, T& kernel, int N) {
-  cudaEvent_t start, stop;
-  cudaEventCreate(&start);
-  cudaEventCreate(&stop);
-
-  cudaEventRecord(start);
-  kernel.launch();
-  cudaEventRecord(stop);
-
-  gpuErrchk(cudaPeekAtLastError());
-  gpuErrchk(cudaDeviceSynchronize());
+  CHECK_CUDA(cudaPeekAtLastError());
+  CHECK_CUDA(cudaDeviceSynchronize());
 
   cudaEventSynchronize(stop);
   float milliseconds = 0;
@@ -136,4 +112,4 @@ struct get_power<A, 0> {
   static const int value = 1;
 };
 
-#endif  // CUDA_KNN_CORE_UTILS_CUH_
+#endif  // INCLUDE_GGNN_UTILS_CUDA_KNN_CORE_UTILS_CUH_

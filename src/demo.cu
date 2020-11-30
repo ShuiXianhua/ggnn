@@ -18,6 +18,7 @@ limitations under the License.
 #include <gflags/gflags.h>
 #include <stdio.h>
 
+#include <iostream>
 #include <vector>
 
 #include "cub/cub.cuh"
@@ -28,258 +29,183 @@ limitations under the License.
 #include "ggnn/utils/cuda_knn_core_utils.cuh"
 #include "ggnn/utils/cuda_knn_dataset.cuh"
 
+DEFINE_string(base_filename, "", "path to file with base vectors");
+DEFINE_string(query_filename, "", "path to file with perform_query vectors");
+DEFINE_string(groundtruth_filename, "",
+              "path to file with groundtruth vectors");
+DEFINE_string(graph_filename, "",
+              "path to file that contains the serialized graph");
+DEFINE_double(tau, 0.5, "Parameter tau");
+DEFINE_int32(refinement_iterations, 2, "Number of refinement iterations");
+DEFINE_int32(gpu_id, 0, "GPU id");
+
+constexpr float milliseconds_per_second = 1000.f;
+
+using KeyT = int32_t;
+using BaseT = float;
+using ValueT = float;
+using BAddrT = uint32_t;
+using GAddrT = uint32_t;
+
 int main(int argc, char* argv[]) {
   google::InitGoogleLogging(argv[0]);
+
+  gflags::SetUsageMessage(
+      "GGNN: Graph-based GPU Nearest Neighbor Search\n"
+      "by Fabian Groh, Lukas Ruppert, Patrick Wieschollek, Hendrik P.A. "
+      "Lensch\n"
+      "(c) 2020 Computer Graphics University of Tuebingen");
+  gflags::SetVersionString("1.0.0");
   google::ParseCommandLineFlags(&argc, &argv, true);
 
-  printf("GGNN: Graph-based GPU Nearest Neighbor Search\n");
-  printf(
-      "by Fabian Groh, Lukas Ruppert, Patrick Wieschollek, Hendrik P.A. "
-      "Lensch\n");
-  printf("(c) 2020 Computer Graphics University of Tuebingen\n");
-  printf("\n");
+  LOG(INFO) << "Reading files";
+  CHECK(file_exists(FLAGS_base_filename))
+      << "File for base vectors has to exists";
+  CHECK(file_exists(FLAGS_query_filename))
+      << "File for perform_query vectors has to exists";
+  CHECK(file_exists(FLAGS_groundtruth_filename))
+      << "File for groundtruth vectors has to exists";
+
+  CHECK_GE(FLAGS_tau, 0) << "Tau has to be bigger or equal 0.";
+  CHECK_LE(FLAGS_tau, 1) << "Tau has to be smaller or equal 1.";
+  CHECK_GE(FLAGS_refinement_iterations, 0)
+      << "The number of refinement iterations has to non-negative.";
 
   // ####################################################################
   // compile-time configuration
+  //
   // ####################################################################
-  // build configuration
+  // perform_build configuration
   const int KBuild = 24;
   const int KF = KBuild / 2;
   const int S = 32;
   const int L = 4;
   const bool bubble_merge = true;
 
-  // query configuration
+  // perform_query configuration
   const int KQuery = 10;
 
   // dataset configuration (here: SIFT1M)
   const int D = 128;
-  typedef int32_t KeyT;
-  typedef float BaseT;
-  typedef float ValueT;
-  typedef uint32_t BAddrT;
-  typedef uint32_t GAddrT;
 
-  // print compile time configuration
-  {
-    printf("compile-time configuration:\n");
-    printf("KBuild: %d, ", KBuild);
-    printf("KF: %d, ", KF);
-    printf("S: %d, ", S);
-    printf("L: %d, ", L);
-    printf("D: %d\n", D);
-#define PRINT_TYPE(T)                                                        \
-  {                                                                          \
-    if (std::is_arithmetic<T>::value)                                        \
-      printf("%s: %s %s (%zu)\n", #T,                                        \
-             std::is_signed<T>::value ? "signed" : "unsigned",               \
-             std::is_floating_point<T>::value ? "float" : "int", sizeof(T)); \
-    else                                                                     \
-      printf("%s: %s\n", #T, typeid(T).name());                              \
-  }
-    PRINT_TYPE(KeyT);
-    PRINT_TYPE(BaseT);
-    PRINT_TYPE(ValueT);
-    PRINT_TYPE(BAddrT);
-    PRINT_TYPE(GAddrT);
-    printf("\n");
-#undef PRINT_TYPE
-  }
+  LOG(INFO) << "Using the following parameters " << KBuild << " (KBuild) " << KF
+            << " (KF) " << S << " (S) " << L << " (L) " << D << " (D) ";
 
-  // ####################################################################
-  // parameter parsing
-  // ####################################################################
-  // check argument count
-  {
-    // TODO: proper argument parsing
-    if (argc < 6) {
-      printf("usage:\n%s", argv[0]);
-      printf(" <base.xvecs> <query.xvecs> <gt.ivecs>");
-      printf(" <tau_build> <refinement_iterations>");
-      printf(" [<GPU id>] [<graph_cache.ggnn>]\n");
+  const bool export_graph =
+      !FLAGS_graph_filename.empty() && !file_exists(FLAGS_graph_filename);
+  const bool import_graph =
+      !FLAGS_graph_filename.empty() && file_exists(FLAGS_graph_filename);
 
-      return -1;
-    }
-  }
-
-  const std::string basePath{argv[1]};
-  const std::string queryPath{argv[2]};
-  const std::string gtPath{argv[3]};
-  // check files
-  {
-    bool filesExist = false;
-    if (!exists(basePath))
-      printf("base file %s does not exist.\n", basePath.c_str());
-    else if (!exists(queryPath))
-      printf("query file %s does not exist.\n", queryPath.c_str());
-    else if (!exists(gtPath))
-      printf("ground truth file %s does not exist.\n", gtPath.c_str());
-    else
-      filesExist = true;
-    if (!filesExist) return -1;
-  }
-  const float tau_build = strtod(argv[4], nullptr);
-  const int refinement_iterations = strtol(argv[5], nullptr, 10);
-
-  int gpuId = (argc > 6 ? strtol(argv[6], nullptr, 10) : 0);
-
-  const std::string graph_file{argc > 7 ? argv[7] : ""};
-  const bool export_graph = !graph_file.empty() && !exists(graph_file);
-  const bool import_graph = !graph_file.empty() && exists(graph_file);
-
-  // print parsed parameters for verification
-  printf("parsed parameters:\n");
-  printf("base: %s\n", basePath.c_str());
-  printf("queries: %s\n", queryPath.c_str());
-  printf("ground truth: %s\n", gtPath.c_str());
-  printf("tau_build: %g\n", tau_build);
-  printf("refinement iterations: %d\n", refinement_iterations);
-  printf("GPU id: %d\n", gpuId);
-  printf("graph file: %s\n", graph_file.c_str());
-
-  // set the requested GPU id, if possible
+  // Set the requested GPU id, if possible.
   {
     int numGpus;
     cudaGetDeviceCount(&numGpus);
-    if (numGpus <= gpuId) {
-      printf("GPU %d does not exist, using GPU 0 instead.\n", gpuId);
-      gpuId = 0;
-    }
+    CHECK_GE(FLAGS_gpu_id, 0) << "This GPU does not exist";
+    CHECK_LT(FLAGS_gpu_id, numGpus) << "This GPU does not exist";
   }
-  cudaSetDevice(gpuId);
+  cudaSetDevice(FLAGS_gpu_id);
 
-  printf("\n");
-
-  const bool build = export_graph || !import_graph;
-  const bool query = true;
-
-  // print build/query and import/export configuration
-  if (build) {
-    printf("graph will be built.\n");
-    if (export_graph)
-      printf("graph will be exported to: %s\n", graph_file.c_str());
-  } else
-    printf("graph will NOT be built.\n");
-  if (query) {
-    if (import_graph)
-      printf("graph will be imported from: %s\n", graph_file.c_str());
-    printf("graph will be queried.\n");
-  } else
-    printf("graph will NOT be queried.\n");
-  printf("\n");
-
-  // ####################################################################
-  // load dataset and allocate graph memory
-  // ####################################################################
+  const bool perform_build = export_graph || !import_graph;
+  const bool perform_query = true;
 
   typedef GGNN<KeyT, ValueT, GAddrT, BaseT, BAddrT, D, KBuild, KF, KQuery, S>
       GGNN;
-  GGNN m_ggnn{basePath, queryPath, gtPath, L, tau_build};
+  GGNN m_ggnn{FLAGS_base_filename, FLAGS_query_filename,
+              FLAGS_groundtruth_filename, L, static_cast<float>(FLAGS_tau)};
 
-  // ####################################################################
-  // build graph
-  // ####################################################################
-  if (build) {
+  if (perform_build) {
     std::vector<float> construction_times;
 
     cudaEvent_t start, stop;
     cudaEventCreate(&start);
     cudaEventCreate(&stop);
 
-    printf("\nStarting Graph construction...\n");
+    LOG(INFO) << "Starting Graph construction...";
 
     cudaEventRecord(start);
-
-    if (bubble_merge)
+    if (bubble_merge) {
       m_ggnn.build_bubble_merge();
-    else
+    } else {
       m_ggnn.build_simple_merge();
+    }
 
     cudaEventRecord(stop);
 
-    gpuErrchk(cudaPeekAtLastError());
-    gpuErrchk(cudaDeviceSynchronize());
-    gpuErrchk(cudaPeekAtLastError());
+    CHECK_CUDA(cudaPeekAtLastError());
+    CHECK_CUDA(cudaDeviceSynchronize());
+    CHECK_CUDA(cudaPeekAtLastError());
 
     cudaEventSynchronize(stop);
     float milliseconds = 0;
     cudaEventElapsedTime(&milliseconds, start, stop);
     construction_times.push_back(milliseconds);
 
-    for (int i = 0; i < refinement_iterations; i++) {
-      lprintf(1, "\nRefinment step: %d \n", i);
+    for (int refinement_step = 0; refinement_step < FLAGS_refinement_iterations;
+         ++refinement_step) {
+      DLOG(INFO) << "Refinement step " << refinement_step;
       m_ggnn.refine();
 
       cudaEventRecord(stop);
-
-      gpuErrchk(cudaPeekAtLastError());
-      gpuErrchk(cudaDeviceSynchronize());
-      gpuErrchk(cudaPeekAtLastError());
-
+      CHECK_CUDA(cudaPeekAtLastError());
+      CHECK_CUDA(cudaDeviceSynchronize());
+      CHECK_CUDA(cudaPeekAtLastError());
       cudaEventSynchronize(stop);
-      float milliseconds = 0;
-      cudaEventElapsedTime(&milliseconds, start, stop);
-      construction_times.push_back(milliseconds);
-    }
 
-    printf("\nGraph construction -- secs: %f || %d points -> %f ms/point \n",
-           construction_times[0] / 1000.f, m_ggnn.m_ggnn_graph.N,
-           construction_times[0] / m_ggnn.m_ggnn_graph.N);
-
-    for (int i = 1; i < construction_times.size() - 1; i++) {
-      float milliseconds = construction_times[i];
-      lprintf(1,
-              "Graph and %d refinement steps included -- seconds: %f || %d "
-              "points -> %f ms/point \n",
-              i, milliseconds / 1000.f, m_ggnn.m_ggnn_graph.N,
-              milliseconds / m_ggnn.m_ggnn_graph.N);
-    }
-    if (refinement_iterations) {
-      printf(
-          "Graph and %d refinement steps included -- seconds: %f || %d points "
-          "-> %f ms/point \n",
-          refinement_iterations,
-          construction_times[construction_times.size() - 1] / 1000.f,
-          m_ggnn.m_ggnn_graph.N,
-          construction_times[construction_times.size() - 1] /
-              m_ggnn.m_ggnn_graph.N);
+      float elapsed_milliseconds = 0;
+      cudaEventElapsedTime(&elapsed_milliseconds, start, stop);
+      construction_times.push_back(elapsed_milliseconds);
     }
     cudaEventDestroy(start);
     cudaEventDestroy(stop);
 
+    const float elapsed_seconds =
+        construction_times[0] / milliseconds_per_second;
+    const float ms_per_point = construction_times[0] / m_ggnn.m_ggnn_graph.N;
+
+    for (int refinement_step = 0;
+         refinement_step < construction_times.size() - 1; refinement_step++) {
+      const float elapsed_milliseconds = construction_times[refinement_step];
+      const float elapsed_seconds =
+          elapsed_milliseconds / milliseconds_per_second;
+      const int number_of_points = m_ggnn.m_ggnn_graph.N;
+
+      LOG(INFO) << "Graph construction + refinement_step";
+      LOG(INFO) << "                   -- secs: " << elapsed_seconds;
+      LOG(INFO) << "                   -- points: " << number_of_points;
+      LOG(INFO) << "                   -- ms/point: "
+                << elapsed_milliseconds / number_of_points;
+    }
+
     if (export_graph) {
-      m_ggnn.write(graph_file, basePath);
+      m_ggnn.write(FLAGS_graph_filename, FLAGS_base_filename);
     }
   }
 
-  // ####################################################################
-  // query graph
-  // ####################################################################
-  if (query) {
+  if (perform_query) {
     if (import_graph) {
-      m_ggnn.read(graph_file);
+      m_ggnn.read(FLAGS_graph_filename);
     }
 
-    m_ggnn.prefetch(gpuId);
+    m_ggnn.prefetch(FLAGS_gpu_id);
 
-    gpuErrchk(cudaPeekAtLastError());
-    gpuErrchk(cudaDeviceSynchronize());
-    gpuErrchk(cudaPeekAtLastError());
+    CHECK_CUDA(cudaPeekAtLastError());
+    CHECK_CUDA(cudaDeviceSynchronize());
+    CHECK_CUDA(cudaPeekAtLastError());
 
-    auto query = [&m_ggnn](const float tau_query) {
+    auto query_function = [&m_ggnn](const float tau_query) {
       cudaMemcpyToSymbol(c_tau_query, &tau_query, sizeof(float));
-      printf("\nQuery with tau_query: %.2f \n", tau_query);
+      LOG(INFO) << "Query with tau_query " << tau_query;
 
       m_ggnn.queryLayer();
       m_ggnn.queryLayerFast();
     };
 
-    query(0.35f);
-    query(0.42f);
-    query(0.60f);
+    query_function(0.35f);
+    query_function(0.42f);
+    query_function(0.60f);
   }
 
   printf("done! \n");
-
+  gflags::ShutDownCommandLineFlags();
   return 0;
 }

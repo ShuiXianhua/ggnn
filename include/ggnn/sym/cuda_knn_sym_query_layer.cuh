@@ -14,8 +14,8 @@ limitations under the License.
 ==============================================================================*/
 // Authors: Fabian Groh, Lukas Ruppert, Patrick Wieschollek, Hendrik P.A. Lensch
 
-#ifndef CUDA_KNN_SYM_QUERY_LAYER_CUH_
-#define CUDA_KNN_SYM_QUERY_LAYER_CUH_
+#ifndef INCLUDE_GGNN_SYM_CUDA_KNN_SYM_QUERY_LAYER_CUH_
+#define INCLUDE_GGNN_SYM_CUDA_KNN_SYM_QUERY_LAYER_CUH_
 
 #include <cuda.h>
 #include <cuda_runtime.h>
@@ -45,8 +45,8 @@ struct SymQueryKernel {
       Cache;
 
   void launch() {
-    lprintf(1, "SymQueryKernel -- Layer: %d | N: %d [%d %d] \n", layer, N,
-            N_offset, N_offset + N);
+    DLOG(INFO) << "SymQueryKernel -- Layer: " << layer << " | N: " << N << " ["
+               << N_offset << " " << N_offset + N << "]";
     launcher<<<N, BLOCK_DIM_X>>>((*this));
   }
 
@@ -54,7 +54,7 @@ struct SymQueryKernel {
     const float xi =
         (d_nn1_stats[0] * d_nn1_stats[0]) * c_tau_build * c_tau_build;
 
-    const KeyT n = N_offset + (int)blockIdx.x;
+    const KeyT n = N_offset + static_cast<int>(blockIdx.x);
     const KeyT m = (!layer) ? n : d_translation[n];
 
     Cache cache(d_base, n, m, xi);
@@ -142,4 +142,4 @@ struct SymQueryKernel {
   int N_offset;
 };
 
-#endif  // CUDA_KNN_SYM_QUERY_LAYER_CUH_
+#endif  // INCLUDE_GGNN_SYM_CUDA_KNN_SYM_QUERY_LAYER_CUH_

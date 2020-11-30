@@ -12,14 +12,15 @@ limitations under the License.
 // Authors: Fabian Groh, Lukas Rupert, Patrick Wieschollek, Hendrik P.A. Lensch
 //
 
-#ifndef GGNN_GRAPH_CUH
-#define GGNN_GRAPH_CUH
+#ifndef INCLUDE_GGNN_GRAPH_CUDA_KNN_GGNN_GRAPH_CUH_
+#define INCLUDE_GGNN_GRAPH_CUDA_KNN_GGNN_GRAPH_CUH_
 
 #include <cuda.h>
 #include <cuda_runtime.h>
 #include <stdio.h>
 
 #include <limits>
+#include <vector>
 
 #include "cub/cub.cuh"
 #include "ggnn/utils/cuda_knn_core_utils.cuh"
@@ -59,11 +60,11 @@ struct GGNNGraph {
   int ST_all;
 
   /// neighborhoods per layer
-  std::vector<int> Ns;  //[L]
+  std::vector<int> Ns;  // [L]
   /// start of neighborhoods per layer
-  std::vector<int> Ns_offsets;  //[L]
+  std::vector<int> Ns_offsets;  // [L]
   /// start of selection/translation per layer
-  std::vector<int> STs_offsets;  //[L]
+  std::vector<int> STs_offsets;  // [L]
 
   /// neighborhood vectors
   KeyT* m_graph;
@@ -90,7 +91,8 @@ struct GGNNGraph {
         STs_offsets(L) {
     /// theoretical growth factor (number of sub-graphs merged together per
     /// layer)
-    const float growth = powf((float)N / (float)S, 1.f / (L - 1));
+    const float growth =
+        powf(static_cast<float>(N) / static_cast<float>(S), 1.f / (L - 1));
 
     const int Gf = growth;
     const int Gc = growth + 1;
@@ -155,9 +157,9 @@ struct GGNNGraph {
 
     copyConstantsToGPU();
 
-    gpuErrchk(cudaPeekAtLastError());
-    gpuErrchk(cudaDeviceSynchronize());
-    gpuErrchk(cudaPeekAtLastError());
+    CHECK_CUDA(cudaPeekAtLastError());
+    CHECK_CUDA(cudaDeviceSynchronize());
+    CHECK_CUDA(cudaPeekAtLastError());
 
     lprintf(2, "GGNNGraph(): done.\n");
   }
@@ -298,33 +300,33 @@ struct GGNNGraph {
     // Allocate temporary storage
     cudaMalloc(&d_temp_storage, temp_storage_bytes);
 
-    gpuErrchk(cudaPeekAtLastError());
-    gpuErrchk(cudaDeviceSynchronize());
-    gpuErrchk(cudaPeekAtLastError());
+    CHECK_CUDA(cudaPeekAtLastError());
+    CHECK_CUDA(cudaDeviceSynchronize());
+    CHECK_CUDA(cudaPeekAtLastError());
 
     cub::DeviceReduce::Sum(d_temp_storage, temp_storage_bytes,
                            m_nn1_dist_buffer, &m_nn1_stats[0], N);
 
-    gpuErrchk(cudaPeekAtLastError());
-    gpuErrchk(cudaDeviceSynchronize());
-    gpuErrchk(cudaPeekAtLastError());
+    CHECK_CUDA(cudaPeekAtLastError());
+    CHECK_CUDA(cudaDeviceSynchronize());
+    CHECK_CUDA(cudaPeekAtLastError());
 
     // Run max-reduction
     cub::DeviceReduce::Max(d_temp_storage, temp_storage_bytes,
                            m_nn1_dist_buffer, &m_nn1_stats[1], N);
 
-    gpuErrchk(cudaPeekAtLastError());
-    gpuErrchk(cudaDeviceSynchronize());
-    gpuErrchk(cudaPeekAtLastError());
+    CHECK_CUDA(cudaPeekAtLastError());
+    CHECK_CUDA(cudaDeviceSynchronize());
+    CHECK_CUDA(cudaPeekAtLastError());
 
-    m_nn1_stats[0] = m_nn1_stats[0] / (float)N;
+    m_nn1_stats[0] = m_nn1_stats[0] / static_cast<float>(N);
     lprintf(2, "mean: %f | max: %f \n", m_nn1_stats[0], m_nn1_stats[1]);
 
     cudaFree(d_temp_storage);
 
-    gpuErrchk(cudaPeekAtLastError());
-    gpuErrchk(cudaDeviceSynchronize());
-    gpuErrchk(cudaPeekAtLastError());
+    CHECK_CUDA(cudaPeekAtLastError());
+    CHECK_CUDA(cudaDeviceSynchronize());
+    CHECK_CUDA(cudaPeekAtLastError());
   }
 
   // TODO(fabi): remove?
@@ -361,10 +363,10 @@ struct GGNNGraph {
     cudaMemPrefetchAsync(m_nn1_stats, 2 * sizeof(ValueT), gpuId);
     cudaMemPrefetchAsync(m_nn1_dist_buffer, N * sizeof(ValueT), gpuId);
 
-    gpuErrchk(cudaPeekAtLastError());
-    gpuErrchk(cudaDeviceSynchronize());
-    gpuErrchk(cudaPeekAtLastError());
+    CHECK_CUDA(cudaPeekAtLastError());
+    CHECK_CUDA(cudaDeviceSynchronize());
+    CHECK_CUDA(cudaPeekAtLastError());
   }
 };
 
-#endif  // GGNN_GRAPH_CUH
+#endif  // INCLUDE_GGNN_GRAPH_CUDA_KNN_GGNN_GRAPH_CUH_

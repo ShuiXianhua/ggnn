@@ -13,8 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 // Authors: Fabian Groh, Patrick Wieschollek, Hendrik P.A. Lensch
-#ifndef CUDA_KNN_MULTI_WORKED_DISTS_CACHE_CUH_
-#define CUDA_KNN_MULTI_WORKED_DISTS_CACHE_CUH_
+
+#ifndef INCLUDE_GGNN_CACHE_CUDA_KNN_MULTI_WORKED_DISTS_CACHE_CUH_
+#define INCLUDE_GGNN_CACHE_CUDA_KNN_MULTI_WORKED_DISTS_CACHE_CUH_
 
 #include <cuda.h>
 #include <cuda_runtime.h>
@@ -84,10 +85,10 @@ struct MultiWorkedDistsCache {
     const ValueT dist;
     const bool worked;
 
-    __device__ __forceinline__ WorkedDist() : dist(EMPTY), worked(false){};
+    __device__ __forceinline__ WorkedDist() : dist(EMPTY), worked(false) {}
 
     __device__ __forceinline__ WorkedDist(const DistBits distB)
-        : dist(distB.dist), worked(distB.bits & 1){};
+        : dist(distB.dist), worked(distB.bits & 1) {}
   };
 
   static __device__ __forceinline__ void set_worked(DistBits& distB) {
@@ -127,12 +128,12 @@ struct MultiWorkedDistsCache {
    *
    * [parallel call]:
    * if(threadIdx.x < N)
-   * 	cache.check(id)
+   *   cache.check(id)
    *
    * Note: __syncthreads() need before next 'cache' call.
    *
    * Return:
-   * 	Returns value if key is already in cache, otherwise -1
+   *   Returns value if key is already in cache, otherwise -1
    *
    */
   __device__ __forceinline__ WorkedDist check(const KeyT key) {
@@ -332,7 +333,7 @@ struct MultiWorkedDistsCache {
   //  * Note: __syncthreads() need before next 'cache' call.
   //  *
   //  * Return:
-  //  * 	returns if entry was succesfull or not
+  //  *   returns if entry was succesfull or not
   //  *
   //  */
 
@@ -514,4 +515,4 @@ struct MultiWorkedDistsCache {
   }
 };
 
-#endif  // CUDA_KNN_MULTI_WORKED_DISTS_CACHE_CUH_
+#endif  // INCLUDE_GGNN_CACHE_CUDA_KNN_MULTI_WORKED_DISTS_CACHE_CUH_

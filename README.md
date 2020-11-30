@@ -24,8 +24,12 @@ cmake ..
 make
 
 # Usage of demo:
-# ./demo <base.xvecs> <query.xvecs> <gt.ivecs> <tau_build> <refinement_iterations> [<GPU id>] [<graph_cache.ggnn>]
-./demo ../data/sift/sift_base.fvecs ../data/sift/sift_query.fvecs ../data/sift/sift_groundtruth.ivecs 0.5 2 0 --v 0
+./demo --base_filename ../data/sift/sift_base.fvecs                 \
+        --query_filename ../data/sift/sift_query.fvecs              \
+        --groundtruth_filename ../data/sift/sift_groundtruth.ivecs  \
+        --graph_filename ./tmp/graph_cache.ggnn  \
+        --gpu_id 0  \
+        --logtostderr=1
 ```
 
 

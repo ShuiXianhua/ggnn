@@ -14,8 +14,8 @@ limitations under the License.
 ==============================================================================*/
 // Authors: Fabian Groh, Patrick Wieschollek, Hendrik P.A. Lensch
 
-#ifndef CONFIG_HPP_
-#define CONFIG_HPP_
+#ifndef INCLUDE_GGNN_CONFIG_HPP_
+#define INCLUDE_GGNN_CONFIG_HPP_
 
 #include <stdarg.h>
 #include <stdio.h>
@@ -26,7 +26,7 @@ limitations under the License.
 
 #include "glog/logging.h"
 
-inline bool exists(const std::string& name) {
+inline bool file_exists(const std::string& name) {
   struct stat buffer;
   return (stat(name.c_str(), &buffer) == 0);
 }
@@ -40,4 +40,4 @@ inline void lprintf(const int log_level, const char* format, ...) {
   }
 }
 
-#endif  // CONFIG_HPP_
+#endif  // INCLUDE_GGNN_CONFIG_HPP_

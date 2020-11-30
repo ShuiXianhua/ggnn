@@ -14,8 +14,8 @@ limitations under the License.
 ==============================================================================*/
 // Authors: Fabian Groh, Lukas Ruppert, Patrick Wieschollek, Hendrik P.A. Lensch
 
-#ifndef CUDA_KNN_TOP_MERGE_LAYER_CUH_
-#define CUDA_KNN_TOP_MERGE_LAYER_CUH_
+#ifndef INCLUDE_GGNN_MERGE_CUDA_KNN_TOP_MERGE_LAYER_CUH_
+#define INCLUDE_GGNN_MERGE_CUDA_KNN_TOP_MERGE_LAYER_CUH_
 
 #include <cuda.h>
 #include <cuda_runtime.h>
@@ -94,4 +94,4 @@ struct TopMergeKernel {
   ValueT* d_nn1_dist_buffer;
 };
 
-#endif  // CUDA_KNN_TOP_MERGE_LAYER_CUH_
+#endif  // INCLUDE_GGNN_MERGE_CUDA_KNN_TOP_MERGE_LAYER_CUH_

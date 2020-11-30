@@ -13,11 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 // Authors: Fabian Groh, Patrick Wieschollek, Hendrik P.A. Lensch
-#ifndef CUDA_KNN_UTILS_CUH_
-#define CUDA_KNN_UTILS_CUH_
+#ifndef INCLUDE_GGNN_UTILS_CUDA_KNN_UTILS_CUH_
+#define INCLUDE_GGNN_UTILS_CUDA_KNN_UTILS_CUH_
 
 #include "ggnn/utils/cuda_knn_core_utils.cuh"
 #include "ggnn/utils/cuda_knn_distance.cuh"
 #include "ggnn/utils/cuda_knn_k_best_list.cuh"
 
-#endif  // CUDA_KNN_UTILS_CUH_
+#endif  // INCLUDE_GGNN_UTILS_CUDA_KNN_UTILS_CUH_

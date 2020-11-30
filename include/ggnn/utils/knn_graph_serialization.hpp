@@ -14,11 +14,15 @@ limitations under the License.
 ==============================================================================*/
 // Authors: Fabian Groh, Lukas Ruppert, Patrick Wieschollek, Hendrik P.A. Lensch
 
-#ifndef KNN_GRAPH_SERIALIZATION_HPP_
-#define KNN_GRAPH_SERIALIZATION_HPP_
+#ifndef INCLUDE_GGNN_UTILS_KNN_GRAPH_SERIALIZATION_HPP_
+#define INCLUDE_GGNN_UTILS_KNN_GRAPH_SERIALIZATION_HPP_
 
+#include <gflags/gflags.h>
 #include <inttypes.h>
+#include <algorithm>
 #include <fstream>
+#include <iostream>
+#include <string>
 #include <type_traits>
 
 template <typename KeyT, typename ValueT>
@@ -78,49 +82,24 @@ struct KNNGraphHeader {
   }
 
   bool verifyTypes() const {
-    if (this->KeyType != KNNGraphHeader<KeyT, ValueT>::ExpectedKeyType::value) {
-      std::cout << "key type does not match" << std::endl;
-      return false;
-    }
-    if (this->ValueType !=
-        KNNGraphHeader<KeyT, ValueT>::ExpectedValueType::value) {
-      std::cout << "value type does not match" << std::endl;
-      return false;
-    }
+    CHECK_EQ(this->KeyType,
+             (KNNGraphHeader<KeyT, ValueT>::ExpectedKeyType::value));
+    CHECK_EQ(this->ValueType,
+             (KNNGraphHeader<KeyT, ValueT>::ExpectedValueType::value));
+
     return true;
   }
 
   bool verify(int N, int D, int K, int KF, int L, int S,
               float tau_build) const {
     if (!verifyTypes()) return false;
-    if (this->N != N) {
-      std::cout << "N does not match" << std::endl;
-      return false;
-    }
-    if (this->D != D) {
-      std::cout << "D does not match" << std::endl;
-      return false;
-    }
-    if (this->K != K) {
-      std::cout << "K does not match" << std::endl;
-      return false;
-    }
-    if (this->KF != KF) {
-      std::cout << "KF does not match" << std::endl;
-      return false;
-    }
-    if (this->L != L) {
-      std::cout << "L does not match" << std::endl;
-      return false;
-    }
-    if (this->S != S) {
-      std::cout << "K does not match" << std::endl;
-      return false;
-    }
-    if (this->tau_build != tau_build) {
-      std::cout << "tau_build does not match" << std::endl;
-      return false;
-    }
+    CHECK_EQ(this->N, N);
+    CHECK_EQ(this->D, D);
+    CHECK_EQ(this->K, K);
+    CHECK_EQ(this->KF, KF);
+    CHECK_EQ(this->L, L);
+    CHECK_EQ(this->S, S);
+    CHECK_EQ(this->tau_build, tau_build);
     return true;
   }
 };
@@ -131,7 +110,8 @@ struct KNNGraphData {
 
   size_t computeSTAll() const {
     const float growth =
-        powf((float)header.N / (float)header.S, 1.f / (header.L - 1));
+        powf(static_cast<float>(header.N) / static_cast<float>(header.S),
+             1.f / (header.L - 1));
 
     const int Gf = growth;
     const int Gc = growth + 1;
@@ -157,17 +137,17 @@ struct KNNGraphData {
   size_t sizeofGraph() const {
     return static_cast<size_t>(header.N) * static_cast<size_t>(header.K) *
            sizeof(ValueT);
-  };
+  }
 
-  size_t sizeofTranslation() const { return computeSTAll() * sizeof(KeyT); };
+  size_t sizeofTranslation() const { return computeSTAll() * sizeof(KeyT); }
 
-  size_t sizeofSelection() const { return computeSTAll() * sizeof(KeyT); };
+  size_t sizeofSelection() const { return computeSTAll() * sizeof(KeyT); }
 
-  size_t sizeofNN1Stats() const { return 2 * sizeof(ValueT); };
+  size_t sizeofNN1Stats() const { return 2 * sizeof(ValueT); }
 
   size_t sizeofNN1DistBuffer() const {
     return static_cast<size_t>(header.N) * sizeof(ValueT);
-  };
+  }
 
   size_t totalSize() const {
     return sizeof(header) + sizeofGraph() + sizeofTranslation() +
@@ -181,29 +161,18 @@ class KNNGraphReader : private KNNGraphData<KeyT, ValueT> {
 
  public:
   bool open(const std::string& filename) {
-    if (inFile.is_open()) {
-      std::cout
-          << "KNNGraphReader::open(): A KNN Graph file was already opened."
-          << std::endl;
-      inFile.close();
-    }
+    CHECK(!inFile.is_open()) << "A KNN Graph file was already opened";
 
     inFile.open(filename, std::ifstream::in | std::ifstream::binary);
-    if (!inFile.is_open()) {
-      std::cout << "failed to open KNN Graph file for reading " << filename
-                << std::endl;
-      return false;
-    }
+    CHECK(inFile.is_open())
+        << "Failed to open KNN Graph file " << filename << " for reading";
 
     inFile.seekg(0, std::ios_base::end);
     size_t filesize = inFile.tellg();
     inFile.seekg(0, std::ios_base::beg);
 
-    if (filesize < sizeof(this->header)) {
-      std::cout << "invalid KNN Graph file (too small to contain header!) "
-                << filename << std::endl;
-      return false;
-    }
+    CHECK_LT(filesize, sizeof(this->header))
+        << "invalid KNN Graph file (too small to contain header!) ";
 
     inFile.read(reinterpret_cast<char*>(&this->header), sizeof(this->header));
 
@@ -423,4 +392,4 @@ class KNNGraphWriter : private KNNGraphData<KeyT, ValueT> {
   }
 };
 
-#endif /* KNN_GRAPH_SERIALIZATION_HPP_ */
+#endif  // INCLUDE_GGNN_UTILS_KNN_GRAPH_SERIALIZATION_HPP_

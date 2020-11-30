@@ -14,14 +14,16 @@ limitations under the License.
 ==============================================================================*/
 // Authors: Fabian Groh, Patrick Wieschollek, Hendrik P.A. Lensch
 
-#ifndef CUDA_KNN_WRS_SELECT_LAYER_CUH_
-#define CUDA_KNN_WRS_SELECT_LAYER_CUH_
+#ifndef INCLUDE_GGNN_SELECT_CUDA_KNN_WRS_SELECT_LAYER_CUH_
+#define INCLUDE_GGNN_SELECT_CUDA_KNN_WRS_SELECT_LAYER_CUH_
+
+#include <limits>
 
 #include <cuda.h>
 #include <cuda_runtime.h>
 
+#include <gflags/gflags.h>
 #include <cub/cub.cuh>
-#include <limits>
 
 #include "ggnn/config.hpp"
 #include "ggnn/cuda_knn_config.cuh"
@@ -37,7 +39,7 @@ struct WRSSelectionKernel {
       BlockRadixSort;
 
   void launch() {
-    lprintf(2, "SelectionKernel: B: %d [%d %d] \n", B, B_offset, B_offset + B);
+    DLOG(INFO) << "SelectionKernel: B" << B << "B_offset" << B_offset;
     launcher<<<B, BLOCK_DIM_X>>>((*this));
   }
 
@@ -115,4 +117,4 @@ struct WRSSelectionKernel {
   KeyT* d_translation;
 };
 
-#endif  // CUDA_KNN_WRS_SELECT_LAYER_CUH_
+#endif  // INCLUDE_GGNN_SELECT_CUDA_KNN_WRS_SELECT_LAYER_CUH_

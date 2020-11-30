@@ -36,9 +36,14 @@ class XVecsLoader : public Loader<ValueT> {
 
     this->num_elements = fsize / stride;
     this->hnd->seekg(0, std::ios::beg);
+
+    DLOG(INFO) << "Open " << path << " with " << this->num_elements << " "
+               << this->dimension << "-dim vectors.";
   }
 
   void load(ValueT* dst, size_t skip, size_t num) override {
+    DLOG(INFO) << "Loading " << num << " vectors starting a " << skip << " ...";
+
     size_t stride = 1 * sizeof(uint32_t) + this->dimension * sizeof(ValueT);
     this->hnd->seekg(stride * skip);
 
@@ -47,15 +52,14 @@ class XVecsLoader : public Loader<ValueT> {
     for (size_t n = 0; n < num; ++n) {
       // skip dimension
       this->hnd->read(reinterpret_cast<char*>(&dim), sizeof(int32_t));
-      if (dim != this->dimension) {
-        std::cout << "xvecs file error: dimension mismatch" << std::endl;
-        return;
-      }
+      CHECK_EQ(dim, this->dimension) << "dimension mismatch";
 
       this->hnd->read(reinterpret_cast<char*>(dst),
                       this->dimension * sizeof(ValueT));
       dst += this->dimension;
     }
+
+    DLOG(INFO) << "Done";
   }
 };
 

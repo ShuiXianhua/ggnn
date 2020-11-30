@@ -13,8 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 // Authors: Fabian Groh, Lukas Ruppert, Patrick Wieschollek, Hendrik P.A. Lensch
-#ifndef CUDA_KNN_CACHE_SYM_CUH_
-#define CUDA_KNN_CACHE_SYM_CUH_
+
+#ifndef INCLUDE_GGNN_CACHE_CUDA_KNN_CACHE_SYM_CUH_
+#define INCLUDE_GGNN_CACHE_CUDA_KNN_CACHE_SYM_CUH_
 
 #include <cuda.h>
 #include <cuda_runtime.h>
@@ -271,7 +272,7 @@ struct SortedBufferSymCache {
    * ValueT dist = cache.distance(other_id)
    *
    * Return:
-   * 	ValueT distance
+   *   ValueT distance
    *
    * Note: distance valid in all threads.
    */
@@ -301,16 +302,21 @@ struct SortedBufferSymCache {
   }
 
   __device__ __forceinline__ bool criteria(ValueT dist) {
-    if (dist < criteria_dist) return true;
+    if (dist < criteria_dist) {
+      return true;
+    }
     return false;
   }
 
   __device__ __forceinline__ void push_cache(KeyT key) {
-    if (key == EMPTY_KEY) return;
+    if (key == EMPTY_KEY) {
+      return;
+    }
     s_cache[PRIOQ_SIZE + s_cache_ring] = key;
     s_cache_ring = (s_cache_ring + 1);
-    if (s_cache_ring >= CACHE_BUFFER_SIZE)
+    if (s_cache_ring >= CACHE_BUFFER_SIZE) {
       s_cache_ring = s_cache_ring % CACHE_BUFFER_SIZE;
+    }
   }
 
   __device__ __forceinline__ void insert_front_prioQ(KeyT key, ValueT dist) {
@@ -319,9 +325,9 @@ struct SortedBufferSymCache {
     const int pos = BEST_SIZE + s_prioQ_ring;
 
     if (s_cache[pos] != EMPTY_KEY) {
-      if (s_dists[pos].dist == EMPTY_DIST)
+      if (s_dists[pos].dist == EMPTY_DIST) {
         push_cache(s_cache[pos]);
-      else {
+      } else {
         if (criteria(s_dists[pos].dist)) {
           s_overflow_counter++;
         }
@@ -517,15 +523,17 @@ struct SortedBufferSymCache {
                              .Reduce(pairs, ArgWorkedDistMin());
 
     if (!threadIdx.x) {
-      if (aggregate.value == std::numeric_limits<ValueT>::infinity())
+      if (aggregate.value == std::numeric_limits<ValueT>::infinity()){
         s_sync.cache = EMPTY_KEY;
+      }
       else {
         s_sync.cache = s_cache[aggregate.key];
         if (aggregate.key >= BEST_SIZE) {
           s_prioQ_ring = (s_prioQ_ring + 1) % PRIOQ_BUFFER_SIZE;
           s_dists[aggregate.key].dist = std::numeric_limits<ValueT>::infinity();
-        } else
+        } else{
           set_worked(s_dists[aggregate.key]);
+        }
       }
     }
     __syncthreads();
@@ -611,4 +619,4 @@ struct SortedBufferSymCache {
   }
 };
 
-#endif  // CUDA_KNN_CACHE_SYM_CUH_
+#endif  // INCLUDE_GGNN_CACHE_CUDA_KNN_CACHE_SYM_CUH_
