@@ -30,8 +30,8 @@ limitations under the License.
 #include "ggnn/utils/cuda_knn_utils.cuh"
 
 template <typename ValueT, typename KeyT, int D, int K, int KF, int S,
-          int BLOCK_DIM_X, typename BaseT = ValueT,
-          typename BAddrT = int32_t, typename GAddrT = int32_t>
+          int BLOCK_DIM_X, typename BaseT = ValueT, typename BAddrT = int32_t,
+          typename GAddrT = int32_t>
 struct MergeKernel {
   static constexpr int KL = K - KF;
   static constexpr int MAX_ITERATIONS = 200;

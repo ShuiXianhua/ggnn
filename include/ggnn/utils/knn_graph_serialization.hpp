@@ -90,7 +90,8 @@ struct KNNGraphHeader {
     return true;
   }
 
-  bool verify(int N, int D, int K, int KF, int L, int S, float tau_build) const {
+  bool verify(int N, int D, int K, int KF, int L, int S,
+              float tau_build) const {
     if (!verifyTypes()) return false;
     if (this->N != N) {
       std::cout << "N does not match" << std::endl;
@@ -235,7 +236,8 @@ class KNNGraphReader : private KNNGraphData<KeyT, ValueT> {
     return true;
   }
 
-  bool verify(int N, int D, int K, int KF, int L, int S, float tau_build) const {
+  bool verify(int N, int D, int K, int KF, int L, int S,
+              float tau_build) const {
     return this->header.verify(N, D, K, KF, L, S, tau_build);
   }
 
@@ -408,8 +410,9 @@ class KNNGraphWriter : private KNNGraphData<KeyT, ValueT> {
     outFile.write(reinterpret_cast<const char*>(nn1_dist_buffer),
                   this->sizeofNN1DistBuffer());
     if (!outFile) {
-      std::cout << "io error in KNN Graph file (tried to write nn1_dist_buffer) "
-                << std::endl;
+      std::cout
+          << "io error in KNN Graph file (tried to write nn1_dist_buffer) "
+          << std::endl;
       outFile.close();
       return false;
     }

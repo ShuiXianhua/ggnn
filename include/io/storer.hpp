@@ -43,7 +43,7 @@ class Storer {
    * @param skip number of vectors to skip (not bytes, not values)
    * @param num  number of elements to read
    */
-  virtual void store(ValueT *dst, size_t num) = 0;
+  virtual void store(ValueT* dst, size_t num) = 0;
 
   uint Dim() const { return dimension; }
   uint Num() const { return num_elements; }
@@ -51,7 +51,7 @@ class Storer {
 
  protected:
   std::string path;
-  std::ofstream *hnd;
+  std::ofstream* hnd;
 
   uint dimension;
   uint num_elements;

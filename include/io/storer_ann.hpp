@@ -24,13 +24,12 @@ class XVecsStorer : public Storer<ValueT> {
   explicit XVecsStorer(std::string path, uint dimension, uint num_elements)
       : Storer<ValueT>(path, dimension, num_elements) {}
 
-  void store(ValueT *dst, size_t num) override {
+  void store(ValueT* dst, size_t num) override {
     for (uint n = 0; n < num; ++n) {
-      this->hnd->write(reinterpret_cast<char *>(&this->dimension), sizeof(int));
+      this->hnd->write(reinterpret_cast<char*>(&this->dimension), sizeof(int));
       for (uint i = 0; i < this->dimension; ++i) {
-        this->hnd->write(
-            reinterpret_cast<char *>(&dst[n * this->dimension + i]),
-            sizeof(ValueT));
+        this->hnd->write(reinterpret_cast<char*>(&dst[n * this->dimension + i]),
+                         sizeof(ValueT));
       }
     }
   }

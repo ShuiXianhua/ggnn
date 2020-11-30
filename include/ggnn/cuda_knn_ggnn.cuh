@@ -100,8 +100,8 @@ struct GGNN {
   bool write(const std::string& filename, const std::string& comment) const {
     KNNGraphWriter<KeyT, ValueT> graphWriter;
     graphWriter.configure(m_ggnn_graph.N, D, m_ggnn_graph.K, m_ggnn_graph.KF,
-                          m_ggnn_graph.L, m_ggnn_graph.S, m_ggnn_graph.tau_build,
-                          comment.c_str());
+                          m_ggnn_graph.L, m_ggnn_graph.S,
+                          m_ggnn_graph.tau_build, comment.c_str());
     graphWriter.open(filename);
     const bool success =
         graphWriter.write(m_ggnn_graph.m_graph, m_ggnn_graph.m_translation,
@@ -312,8 +312,8 @@ struct GGNN {
   };
 
   void mergeLayer(const int layer_top, const int layer_btm) {
-    typedef MergeKernel<ValueT, KeyT, D, KBuild, KF, S, 64, BaseT,
-                        BAddrT, GAddrT>
+    typedef MergeKernel<ValueT, KeyT, D, KBuild, KF, S, 64, BaseT, BAddrT,
+                        GAddrT>
         MergeKernel;
 
     size_t graph_buffer_size =
@@ -369,8 +369,8 @@ struct GGNN {
   };
 
   void sym(const int layer) {
-    typedef SymQueryKernel<ValueT, KeyT, D, KBuild, KF, 64, BaseT,
-                           BAddrT, GAddrT>
+    typedef SymQueryKernel<ValueT, KeyT, D, KBuild, KF, 64, BaseT, BAddrT,
+                           GAddrT>
         SymQueryKernel;
 
     KeyT* d_sym_buffer;

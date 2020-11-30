@@ -76,8 +76,8 @@ float time_launcher(const int log_level, T* kernel, int N) {
   float milliseconds = 0;
   cudaEventElapsedTime(&milliseconds, start, stop);
 
-  lprintf(log_level, "ms: %f for %d queries -> %f ms/query \n", milliseconds,
-          N, milliseconds / N);
+  lprintf(log_level, "ms: %f for %d queries -> %f ms/query \n", milliseconds, N,
+          milliseconds / N);
   cudaEventDestroy(start);
   cudaEventDestroy(stop);
 
@@ -101,8 +101,8 @@ float time_launcher(const int log_level, T& kernel, int N) {
   float milliseconds = 0;
   cudaEventElapsedTime(&milliseconds, start, stop);
 
-  lprintf(log_level, "ms: %f for %d queries -> %f ms/query \n", milliseconds,
-          N, milliseconds / N);
+  lprintf(log_level, "ms: %f for %d queries -> %f ms/query \n", milliseconds, N,
+          milliseconds / N);
   cudaEventDestroy(start);
   cudaEventDestroy(stop);
 

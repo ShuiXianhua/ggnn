@@ -24,7 +24,7 @@ class XVecsLoader : public Loader<ValueT> {
   explicit XVecsLoader(const std::string& path) : Loader<ValueT>(path) {
     // find dimension
     this->hnd->seekg(0, std::ios::beg);
-    this->hnd->read(reinterpret_cast<char *>(&this->dimension), sizeof(int));
+    this->hnd->read(reinterpret_cast<char*>(&this->dimension), sizeof(int));
 
     size_t stride = sizeof(uint32_t) + this->dimension * sizeof(ValueT);
 
@@ -38,7 +38,7 @@ class XVecsLoader : public Loader<ValueT> {
     this->hnd->seekg(0, std::ios::beg);
   }
 
-  void load(ValueT *dst, size_t skip, size_t num) override {
+  void load(ValueT* dst, size_t skip, size_t num) override {
     size_t stride = 1 * sizeof(uint32_t) + this->dimension * sizeof(ValueT);
     this->hnd->seekg(stride * skip);
 
@@ -46,13 +46,13 @@ class XVecsLoader : public Loader<ValueT> {
 
     for (size_t n = 0; n < num; ++n) {
       // skip dimension
-      this->hnd->read(reinterpret_cast<char *>(&dim), sizeof(int32_t));
+      this->hnd->read(reinterpret_cast<char*>(&dim), sizeof(int32_t));
       if (dim != this->dimension) {
         std::cout << "xvecs file error: dimension mismatch" << std::endl;
         return;
       }
 
-      this->hnd->read(reinterpret_cast<char *>(dst),
+      this->hnd->read(reinterpret_cast<char*>(dst),
                       this->dimension * sizeof(ValueT));
       dst += this->dimension;
     }
