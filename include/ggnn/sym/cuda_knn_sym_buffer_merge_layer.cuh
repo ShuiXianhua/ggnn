@@ -24,7 +24,6 @@ limitations under the License.
 #include <limits>
 
 #include "ggnn/cache/cuda_knn_cache_sym.cuh"
-#include "ggnn/cache/cuda_knn_multi_worked_dists_cache.cuh"
 #include "ggnn/config.hpp"
 #include "ggnn/utils/cuda_knn_utils.cuh"
 

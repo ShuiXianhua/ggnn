@@ -23,7 +23,6 @@ limitations under the License.
 #include <cub/cub.cuh>
 #include <limits>
 
-#include "ggnn/cache/cuda_knn_multi_worked_dists_cache.cuh"
 #include "ggnn/cache/cuda_knn_sorted_buffer_cache.cuh"
 #include "ggnn/config.hpp"
 #include "ggnn/cuda_knn_config.cuh"
